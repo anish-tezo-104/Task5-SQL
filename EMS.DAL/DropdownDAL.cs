@@ -1,58 +1,76 @@
 using System.Data.SqlClient;
-using System.Text.Json;
-using Dapper;
 using EMS.DAL.DBO;
 using EMS.DAL.DTO;
 using EMS.DAL.Interfaces;
-using Microsoft.Extensions.Configuration;
-
 namespace EMS.DAL;
 
-public class DropdownDAL : IDropdownDAL
+public class DropdownDAL : BaseDAL, IDropdownDAL
 {
-
-    public readonly IConfiguration _configuration;
     private readonly string? _connectionString = "";
 
-    public DropdownDAL(IConfiguration configuration)
+    public DropdownDAL(string connectionString) : base()
     {
-        _configuration = configuration;
-        _connectionString = _configuration["ConnectionString"];
+        _connectionString = connectionString;
     }
 
     public List<Dropdown>? GetLocationsList()
     {
-        return LoadDataToList<Dropdown>("SELECT ID, Name FROM Location");
+        string query = "SELECT * FROM Location";
+        using SqlDataReader reader = ExecuteQuery(query);
+        if (reader != null && reader.HasRows)
+        {
+            return LoadDataToList<Dropdown>(reader);
+        }
+        return [];
     }
 
     public List<Dropdown>? GetDepartmentsList()
     {
-        return LoadDataToList<Dropdown>("SELECT * FROM Department");
+        string query = "SELECT * FROM Department";
+        using SqlDataReader reader = ExecuteQuery(query);
+        if (reader != null && reader.HasRows)
+        {
+            return LoadDataToList<Dropdown>(reader);
+        }
+        return [];
     }
 
     public List<Dropdown>? GetManagersList()
     {
-        return LoadDataToList<Dropdown>("SELECT ID, CONCAT(FirstName, ' ', LastName) AS Name FROM Employee WHERE IsManager = 1");
+        string query = "SELECT Id, CONCAT(FirstName, ' ', LastName) AS Name FROM Employee WHERE IsManager = 1";
+        using SqlDataReader reader = ExecuteQuery(query);
+        if (reader != null && reader.HasRows)
+        {
+            return LoadDataToList<Dropdown>(reader);
+        }
+        return [];
     }
 
     public List<Dropdown>? GetProjectsList()
     {
-        return LoadDataToList<Dropdown>("SELECT * FROM Project");
-    }
-
-    public List<Dropdown>? GetStatusList()
-    {
-        return LoadDataToList<Dropdown>("SELECT * FROM Status");
+        string query = "SELECT * FROM Project";
+        using SqlDataReader reader = ExecuteQuery(query);
+        if (reader != null && reader.HasRows)
+        {
+            return LoadDataToList<Dropdown>(reader);
+        }
+        return [];
     }
 
     public List<Role>? GetRolesList()
     {
-        return LoadDataToList<Role>("SELECT * FROM Role");
+        string query = "SELECT * FROM Role";
+        using SqlDataReader reader = ExecuteQuery(query);
+        if (reader != null && reader.HasRows)
+        {
+            return LoadDataToList<Role>(reader);
+        }
+        return [];
     }
 
     public Dictionary<int, string>? GetRoleNamesByDepartmentId(int? departmentId)
     {
-        Dictionary<int, string> roleNames = new Dictionary<int, string>();
+        Dictionary<int, string> roleNames = [];
 
         string query = @"
     SELECT r.Id AS Id, r.Name AS RoleName
@@ -60,9 +78,9 @@ public class DropdownDAL : IDropdownDAL
     INNER JOIN Department AS d ON r.DepartmentId = d.Id
     WHERE d.Id = @DepartmentId";
 
-        using (SqlConnection connection = new SqlConnection(_connectionString))
+        using (SqlConnection connection = new(_connectionString))
         {
-            SqlCommand command = new SqlCommand(query, connection);
+            SqlCommand command = new(query, connection);
             command.Parameters.AddWithValue("@DepartmentId", departmentId);
 
             connection.Open();
@@ -81,13 +99,15 @@ public class DropdownDAL : IDropdownDAL
         return roleNames;
     }
 
-    private List<T>? LoadDataToList<T>(string query)
+    public SqlDataReader ExecuteQuery(string query)
     {
-        using var connection = new SqlConnection(_connectionString);
+        SqlConnection connection = new(_connectionString);
+        SqlCommand command = new(query, connection);
         try
         {
             connection.Open();
-            return connection.Query<T>(query).AsList();
+            SqlDataReader? reader = command.ExecuteReader();
+            return reader;
         }
         catch (Exception ex)
         {

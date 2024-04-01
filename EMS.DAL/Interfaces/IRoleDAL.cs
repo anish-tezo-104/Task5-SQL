@@ -4,6 +4,6 @@ namespace EMS.DAL.Interfaces;
 
 public interface IRoleDAL
 {
-    public bool Insert(Role role);
+    public int Insert(Role role);
     public List<Role>? RetrieveAll();
 }

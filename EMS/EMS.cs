@@ -32,16 +32,18 @@ public partial class EMS
     private static partial EmployeeFilters? GetEmployeeFiltersFromConsole();
     private static partial EmployeeDetails GetUpdatedDataFromUser();
     private static partial void PrintRoles(List<Role> roles);
+    private static string _connectionString = "";
 
     static EMS()
     {
         _configuration = GetIConfiguration();
         _logger = new ConsoleLogger();
-        _dropdownDal = new DropdownDAL(_configuration);
+        _connectionString = _configuration["ConnectionString"] ?? throw new ArgumentNullException("ConnectionString");
+        _dropdownDal = new DropdownDAL(_connectionString);
         _dropdownBal = new DropdownBAL(_dropdownDal);
-        _employeeDal = new EmployeeDAL(_logger, _configuration);
-        _roleDal = new RoleDAL(_logger, _configuration);
-        _employeeBal = new EmployeeBAL(_logger, _employeeDal, _dropdownBal);
+        _employeeDal = new EmployeeDAL(_logger, _connectionString);
+        _roleDal = new RoleDAL(_logger, _connectionString);
+        _employeeBal = new EmployeeBAL(_logger, _employeeDal);
         _roleBal = new RoleBAL(_roleDal);
     }
 
@@ -140,19 +142,19 @@ public partial class EMS
                 PrintError(Constants.GettingDataFromConsoleError);
                 return;
             }
-            bool status = _employeeBal.AddEmployee(employee);
-            if (status)
+            int id = _employeeBal.AddEmployee(employee);
+            if (id > 0)
             {
-                PrintSuccess(Constants.AddEmployeeSuccess);
+                PrintSuccess(Constants.AddEmployeeSuccess + $"\nID: {id}");
             }
             else
             {
                 PrintError(Constants.ErrorMessage);
             }
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            _logger.LogError($"{Constants.ErrorMessage} : {ex.Message}");
+            _logger.LogError($"{Constants.ErrorMessage} ");
         }
     }
 
@@ -161,26 +163,27 @@ public partial class EMS
         try
         {
             List<EmployeeDetails>? employees = _employeeBal.GetAll();
-
-            if (employees != null)
+            if (employees == null)
             {
-                PrintSuccess($"{employees.Count} {Constants.RetrieveAllEmployeesSuccess}");
-                if (employees.Count > 0)
-                {
-                    PrintEmployeesDetails(employees);
-                }
+                PrintError(Constants.ErrorMessage);
+                return;
+            }
+
+            PrintSuccess($"{employees.Count} {Constants.RetrieveAllEmployeesSuccess}");
+            if (employees.Count > 0)
+            {
+                PrintEmployeesDetails(employees);
             }
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            _logger.LogError($"{Constants.ErrorMessage} : {ex.Message}");
+            _logger.LogError(Constants.ErrorMessage);
         }
     }
 
     private static void DeleteEmployee()
     {
         PrintConsoleMessage("Enter the ID :  ");
-
         if (!int.TryParse(Console.ReadLine(), out int id))
         {
             PrintError("Invalid ID");
@@ -192,9 +195,9 @@ public partial class EMS
         {
             employees = _employeeBal.GetEmployeeById(id);
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            _logger.LogError($"{Constants.ErrorMessage}: {ex.Message}");
+            _logger.LogError(Constants.ErrorMessage);
             return;
         }
 
@@ -206,19 +209,19 @@ public partial class EMS
 
         try
         {
-            bool status = _employeeBal.DeleteEmployee(id);
-            if (status)
+            int rowAffected = _employeeBal.DeleteEmployee(id);
+            if (rowAffected >= 0)
             {
-                PrintSuccess(Constants.DeleteEmployeeSuccess);
+                PrintSuccess($"{rowAffected} {Constants.DeleteEmployeeSuccess}");
             }
             else
             {
-                PrintError($"{Constants.ErrorMessage}");
+                PrintError(Constants.ErrorMessage);
             }
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            _logger.LogError($"{Constants.ErrorMessage} : {ex.Message}");
+            _logger.LogError($"{Constants.ErrorMessage} ");
         }
     }
 
@@ -230,14 +233,15 @@ public partial class EMS
             PrintError("Invalid ID");
             return;
         }
+
         List<EmployeeDetails> employees;
         try
         {
             employees = _employeeBal.GetEmployeeById(id);
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            _logger.LogError($"{Constants.ErrorMessage}: {ex.Message}");
+            _logger.LogError(Constants.ErrorMessage);
             return;
         }
 
@@ -252,19 +256,19 @@ public partial class EMS
         EmployeeDetails updatedEmployee = GetUpdatedDataFromUser();
         try
         {
-            bool status = _employeeBal.UpdateEmployee(id, updatedEmployee);
-            if (status)
+            int rowsAffected = _employeeBal.UpdateEmployee(id, updatedEmployee);
+            if (rowsAffected >= 0)
             {
-                PrintSuccess(Constants.UpdateEmployeeSuccess);
+                PrintSuccess($"{rowsAffected} {Constants.UpdateEmployeeSuccess}");
             }
             else
             {
                 PrintError(Constants.ErrorMessage);
             }
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            _logger.LogError($"{Constants.ErrorMessage} : {ex.Message}");
+            _logger.LogError(Constants.ErrorMessage);
         }
     }
 
@@ -290,9 +294,9 @@ public partial class EMS
 
             }
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            _logger.LogError($"{Constants.ErrorMessage} : {ex.Message}");
+            _logger.LogError(Constants.ErrorMessage);
         }
     }
 
@@ -317,9 +321,9 @@ public partial class EMS
 
             }
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            _logger.LogError($"{Constants.ErrorMessage} : {ex.Message}");
+            _logger.LogError(Constants.ErrorMessage);
         }
         ResetFilters(filters);
     }
@@ -331,9 +335,9 @@ public partial class EMS
             int count = _employeeBal.CountEmployees();
             PrintSuccess($"{Constants.CountEmployeesSuccess} {count}");
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            _logger.LogError($"{Constants.ErrorMessage} : {ex.Message}");
+            _logger.LogError(Constants.ErrorMessage);
         }
     }
 
@@ -348,19 +352,19 @@ public partial class EMS
                 PrintError(Constants.GettingDataFromConsoleError);
                 return;
             }
-            bool status = _roleBal.AddRole(role);
-            if (status)
+            int id = _roleBal.AddRole(role);
+            if (id > 0)
             {
-                PrintSuccess(Constants.AddRoleSuccess);
+                PrintSuccess(Constants.AddRoleSuccess + $"\nID: {id}");
             }
             else
             {
                 PrintError(Constants.ErrorMessage);
             }
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            _logger.LogError($"{Constants.ErrorMessage}: {ex.Message}");
+            _logger.LogError(Constants.ErrorMessage);
         }
     }
 

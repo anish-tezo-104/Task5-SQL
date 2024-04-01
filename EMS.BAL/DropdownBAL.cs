@@ -13,6 +13,7 @@ public class DropdownBAL : IDropdownBAL
     {
         _dropdownDAL = dropdownDAL;
     }
+    
     public Dictionary<int, string> GetDepartments()
     {
         List<Dropdown> departmentsList = _dropdownDAL.GetDepartmentsList() ?? [];

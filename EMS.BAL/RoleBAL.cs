@@ -14,7 +14,7 @@ public class RoleBAL : IRoleBAL
         _roleDal = roleDal;
     }
 
-    public bool AddRole(Role role)
+    public int AddRole(Role role)
     {
         return _roleDal.Insert(role);
     }

@@ -1,3 +1,4 @@
+using System.Data.SqlClient;
 using EMS.DAL.DBO;
 using EMS.DAL.DTO;
 
@@ -9,7 +10,7 @@ public interface IDropdownDAL
     List<Dropdown>? GetDepartmentsList();
     List<Dropdown>? GetManagersList();
     List<Dropdown>? GetProjectsList();
-    List<Dropdown>? GetStatusList();
     List<Role>? GetRolesList();
     Dictionary<int, string>? GetRoleNamesByDepartmentId(int? departmentId);
+    SqlDataReader ExecuteQuery(string query);
 }

@@ -1,74 +1,122 @@
 using System.Data;
 using System.Data.SqlClient;
+using System.Text;
 using EMS.Common.Logging;
 using EMS.DAL.DBO;
 using EMS.DAL.DTO;
 using EMS.DAL.Interfaces;
-using Microsoft.Extensions.Configuration;
 
 namespace EMS.DAL;
 
-public class EmployeeDAL : IEmployeeDAL
+public class EmployeeDAL : BaseDAL, IEmployeeDAL
 {
     private readonly string? _connectionString = "";
     private readonly ILogger _logger;
-    private readonly IConfiguration _configuration;
 
-    public EmployeeDAL(ILogger logger, IConfiguration configuration)
+    public EmployeeDAL(ILogger logger, string connectionString) : base()
     {
         _logger = logger;
-        _configuration = configuration;
-        _connectionString = _configuration["ConnectionString"];
+        _connectionString = connectionString;
     }
 
-    public bool Insert(EmployeeDetails employee)
-    {
-        using SqlConnection connection = new SqlConnection(_connectionString);
-        connection.Open();
-
-        string query = @"INSERT INTO Employee (UID, Status, FirstName, LastName, Dob, Email, MobileNumber, JoiningDate, LocationId, RoleId, DepartmentId, ProjectId, ManagerId)
-                         VALUES (@UID, @Status, @FirstName, @LastName, @Dob, @Email, @MobileNumber, @JoiningDate, @LocationId, @RoleId, @DepartmentId, @ProjectId, @ManagerId)";
-
-        using SqlCommand command = new SqlCommand(query, connection);
-
-        command.Parameters.AddWithValue("@UID", employee.UID);
-        command.Parameters.AddWithValue("@Status", employee.Status);
-        command.Parameters.AddWithValue("@FirstName", employee.FirstName);
-        command.Parameters.AddWithValue("@LastName", employee.LastName);
-        command.Parameters.AddWithValue("@Dob", employee.Dob);
-        command.Parameters.AddWithValue("@Email", employee.Email);
-        command.Parameters.AddWithValue("@MobileNumber", employee.MobileNumber);
-        command.Parameters.AddWithValue("@JoiningDate", employee.JoiningDate);
-        command.Parameters.AddWithValue("@LocationId", employee.LocationId);
-        command.Parameters.AddWithValue("@RoleId", employee.RoleId);
-        command.Parameters.AddWithValue("@DepartmentId", employee.DepartmentId);
-        command.Parameters.AddWithValue("@ProjectId", employee.ProjectId);
-        command.Parameters.AddWithValue("@ManagerId", employee.ManagerId);
-        int rowsAffected = command.ExecuteNonQuery();
-        if (rowsAffected > 0)
-        {
-            return true;
-        }
-        else
-        {
-            _logger.LogWarning("No rows were affected during insert operation.");
-            return false;
-        }
-    }
-
-    public List<EmployeeDetails> RetrieveAll()
+    public int Insert(EmployeeDetails employee)
     {
         using SqlConnection connection = new(_connectionString);
-        connection.Open();
-        string query = "SELECT * FROM Employee";
-        using SqlCommand command = new(query, connection);
-        using SqlDataReader reader = command.ExecuteReader();
-        List<EmployeeDetails> employees = ConvertDataReaderToEmployeeDetailsList(reader);
-        connection.Close();
-        return employees;
+        try
+        {
+            connection.Open();
+            string query = @"INSERT INTO Employee (UID, FirstName, LastName, Dob, Email, MobileNumber, JoiningDate, LocationId, RoleId, DepartmentId, ProjectId, ManagerId)
+                             VALUES (@UID, @FirstName, @LastName, @Dob, @Email, @MobileNumber, @JoiningDate, @LocationId, @RoleId, @DepartmentId, @ProjectId, @ManagerId);
+                             SELECT SCOPE_IDENTITY();";
+
+            using SqlCommand command = new(query, connection);
+            command.Parameters.AddWithValue("@UID", employee.UID);
+            command.Parameters.AddWithValue("@FirstName", employee.FirstName);
+            command.Parameters.AddWithValue("@LastName", employee.LastName);
+            command.Parameters.AddWithValue("@Dob", employee.Dob);
+            command.Parameters.AddWithValue("@Email", employee.Email);
+            command.Parameters.AddWithValue("@MobileNumber", employee.MobileNumber);
+            command.Parameters.AddWithValue("@JoiningDate", employee.JoiningDate);
+            command.Parameters.AddWithValue("@LocationId", employee.LocationId);
+            command.Parameters.AddWithValue("@RoleId", employee.RoleId);
+            command.Parameters.AddWithValue("@DepartmentId", employee.DepartmentId);
+            command.Parameters.AddWithValue("@ProjectId", employee.ProjectId);
+            command.Parameters.AddWithValue("@ManagerId", employee.ManagerId);
+            int insertedId = Convert.ToInt32(command.ExecuteScalar());
+            return insertedId;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Error occurred while inserting employee: {ex.Message}");
+            throw;
+        }
+        finally
+        {
+            connection.Close();
+        }
     }
 
-    public bool Update(int id, EmployeeDetails employee)
+    public List<EmployeeDetails>? RetrieveAll()
+    {
+        List<EmployeeDetails>? employees = [];
+        using (SqlConnection connection = new(_connectionString))
+        {
+            try
+            {
+                connection.Open();
+                string query = @"
+                SELECT 
+                    Employee.Id, 
+                    Employee.UID, 
+                    Employee.Status, 
+                    Employee.FirstName, 
+                    Employee.LastName, 
+                    Employee.Dob, 
+                    Employee.Email, 
+                    Employee.MobileNumber, 
+                    Employee.JoiningDate, 
+                    Employee.LocationId,
+                    Location.Name as LocationName, 
+                    Employee.RoleId, 
+                    Role.Name as RoleName, 
+                    Employee.DepartmentId, 
+                    Department.Name as DepartmentName, 
+                    Employee.ProjectId, 
+                    Project.Name as ProjectName, 
+                    Employee.ManagerId, 
+                    Manager.Name AS ManagerName
+                FROM 
+                    Employee
+                LEFT JOIN 
+                    Location ON Employee.LocationId = Location.Id
+                LEFT JOIN 
+                    Role ON Employee.RoleId = Role.Id
+                LEFT JOIN 
+                    Department ON Employee.DepartmentId = Department.Id
+                LEFT JOIN 
+                    Project ON Employee.ProjectId = Project.Id
+                LEFT JOIN 
+                    (SELECT ID, CONCAT(FirstName, ' ', LastName) AS Name FROM Employee WHERE IsManager = 1) AS Manager 
+                    ON Employee.ManagerId = Manager.ID";
+
+                using SqlCommand command = new(query, connection);
+                using SqlDataReader reader = command.ExecuteReader();
+                employees = LoadDataToList<EmployeeDetails>(reader);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Error retrieving employee details: {ex.Message}");
+                throw;
+            }
+            finally
+            {
+                connection.Close();
+            }
+        }
+        return employees ?? null;
+    }
+
+    public int Update(int id, EmployeeDetails employee)
     {
         string query = @"
         UPDATE Employee 
@@ -87,10 +135,10 @@ public class EmployeeDAL : IEmployeeDAL
         WHERE 
             ID = @ID";
 
-        using SqlConnection connection = new SqlConnection(_connectionString);
-        connection.Open();
-        using SqlCommand command = new SqlCommand(query, connection);
+        using SqlConnection connection = new(_connectionString);
+        using SqlCommand command = new(query, connection);
         command.Parameters.AddWithValue("@ID", id);
+
         if (!string.IsNullOrEmpty(employee.FirstName) && !string.IsNullOrWhiteSpace(employee.FirstName))
         {
             command.Parameters.AddWithValue("@FirstName", employee.FirstName);
@@ -99,6 +147,7 @@ public class EmployeeDAL : IEmployeeDAL
         {
             command.Parameters.AddWithValue("@FirstName", DBNull.Value);
         }
+
         command.Parameters.AddWithValue("@LastName", !string.IsNullOrEmpty(employee.LastName) ? employee.LastName : DBNull.Value);
         command.Parameters.AddWithValue("@Dob", employee.Dob != null ? employee.Dob : DBNull.Value);
         command.Parameters.AddWithValue("@Email", !string.IsNullOrEmpty(employee.Email) ? employee.Email : DBNull.Value);
@@ -112,17 +161,22 @@ public class EmployeeDAL : IEmployeeDAL
 
         try
         {
+            connection.Open();
             int rowsAffected = command.ExecuteNonQuery();
-            return rowsAffected > 0;
+            return rowsAffected;
         }
         catch (Exception ex)
         {
             _logger.LogError($"Error executing SQL query: {ex.Message}");
-            return false;
+            throw;
+        }
+        finally
+        {
+            connection.Close();
         }
     }
 
-    public bool Delete(int id)
+    public int Delete(int id)
     {
         string query = "DELETE FROM Employee WHERE ID = @ID";
 
@@ -130,169 +184,147 @@ public class EmployeeDAL : IEmployeeDAL
         using SqlCommand command = new(query, connection);
         command.Parameters.AddWithValue("@ID", id);
 
-        connection.Open();
-        int rowsAffected = command.ExecuteNonQuery();
-        if (rowsAffected == 0)
+        try
         {
-            return false;
+            connection.Open();
+            int rowsAffected = command.ExecuteNonQuery();
+            return rowsAffected;
         }
-        return true;
+        catch (Exception ex)
+        {
+            _logger.LogError($"Error deleting employee: {ex.Message}");
+            throw;
+        }
+        finally
+        {
+            connection.Close();
+        }
     }
 
     public List<EmployeeDetails>? Filter(EmployeeFilters? filters)
     {
-        List<EmployeeDetails> employees = RetrieveAll() ?? [];
-        if (filters != null)
+        if (filters == null)
         {
-            // Apply filters
-            employees = ApplyFilter(employees, filters);
-
-            // Apply search
-            if (!string.IsNullOrWhiteSpace(filters.Search))
-            {
-                employees = ApplySearch(employees, filters.Search);
-            }
+            return null;
         }
 
-        return employees;
+        string query = BuildFilterQuery(filters);
+
+        using SqlConnection connection = new(_connectionString);
+        SqlCommand command = new(query, connection);
+
+        try
+        {
+            connection.Open();
+            SqlDataReader reader = command.ExecuteReader();
+            return LoadDataToList<EmployeeDetails>(reader);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Error Filtering: {ex.Message}");
+            throw;
+        }
+        finally
+        {
+            connection.Close();
+        }
+    }
+
+    private static string BuildFilterQuery(EmployeeFilters filters)
+    {
+        string query = @"
+            SELECT 
+                Employee.Id, 
+                Employee.UID, 
+                Employee.Status, 
+                Employee.FirstName, 
+                Employee.LastName, 
+                Employee.Dob, 
+                Employee.Email, 
+                Employee.MobileNumber, 
+                Employee.JoiningDate, 
+                Employee.LocationId,
+                Location.Name as LocationName, 
+                Employee.RoleId, 
+                Role.Name as RoleName, 
+                Employee.DepartmentId, 
+                Department.Name as DepartmentName, 
+                Employee.ProjectId, 
+                Project.Name as ProjectName, 
+                Employee.ManagerId, 
+                Manager.Name AS ManagerName
+            FROM 
+                Employee
+            LEFT JOIN 
+                Location ON Employee.LocationId = Location.Id
+            LEFT JOIN 
+                Role ON Employee.RoleId = Role.Id
+            LEFT JOIN 
+                Department ON Employee.DepartmentId = Department.Id
+            LEFT JOIN 
+                Project ON Employee.ProjectId = Project.Id
+            LEFT JOIN 
+                (SELECT ID, CONCAT(FirstName, ' ', LastName) AS Name FROM Employee WHERE IsManager = 1) AS Manager 
+                ON Employee.ManagerId = Manager.ID
+            WHERE 1 = 1";
+
+        // Apply filter conditions
+        if (filters.Alphabet != null && filters.Alphabet.Count > 0)
+        {
+            string alphabetCondition = string.Join(" OR ", filters.Alphabet.Select(c => $"Employee.FirstName LIKE '{c}%'"));
+            query += $" AND ({alphabetCondition})";
+        }
+
+        if (filters.Locations != null && filters.Locations.Count > 0)
+        {
+            string locationCondition = string.Join(", ", filters.Locations);
+            query += $" AND Employee.LocationId IN ({locationCondition})";
+        }
+
+        if (filters.Departments != null && filters.Departments.Count > 0)
+        {
+            string departmentCondition = string.Join(", ", filters.Departments);
+            query += $" AND Employee.DepartmentId IN ({departmentCondition})";
+        }
+
+        if (filters.Status != null && filters.Status.Count > 0)
+        {
+            string statusCondition = string.Join(", ", filters.Status);
+            query += $" AND Employee.Status IN ({statusCondition})";
+        }
+
+        // Apply search condition
+        if (!string.IsNullOrWhiteSpace(filters.Search))
+        {
+            string searchCondition = $"(Employee.FirstName LIKE '%{filters.Search}%' OR Employee.LastName LIKE '%{filters.Search}%' OR Employee.UID LIKE '%{filters.Search}%' OR Employee.Id LIKE '%{filters.Search}%')";
+            query += $" AND {searchCondition}";
+        }
+
+        return query;
     }
 
     public int Count()
     {
         string query = "SELECT COUNT(*) AS Count FROM Employee;";
         int count = 0;
-        using SqlConnection connection = new(_connectionString);
-        connection.Open();
-        using SqlCommand command = new(query, connection);
-        count = (int)command.ExecuteScalar();
-        return count;
-    }
-
-    public List<EmployeeDetails> GetEmployeeById(int id)
-    {
-        using SqlConnection connection = new(_connectionString);
-        connection.Open();
-        string query = @"SELECT * FROM Employee WHERE ID = @Id";
-
-        using SqlCommand command = new(query, connection);
-        command.Parameters.AddWithValue("@Id", id);
-        using SqlDataReader reader = command.ExecuteReader();
-        List<EmployeeDetails> employees = ConvertDataReaderToEmployeeDetailsList(reader);
-        connection.Close();
-        return employees;
-    }
-
-    private static List<EmployeeDetails> ApplyFilter(List<EmployeeDetails> employees, EmployeeFilters filters)
-    {
-        List<Func<Employee, bool>> filterConditions = [];
-
-        if (filters.Alphabet != null && filters.Alphabet.Count != 0)
-        {
-            filterConditions.Add(e => e.FirstName != null && filters.Alphabet.Contains(char.ToLower(e.FirstName[0])));
-        }
-
-        if (filters.Locations != null && filters.Locations.Count != 0)
-        {
-            filterConditions.Add(e => e.LocationId.HasValue && filters.Locations.Contains(e.LocationId.Value));
-        }
-
-        if (filters.Departments != null && filters.Departments.Count != 0)
-        {
-            filterConditions.Add(e => e.DepartmentId.HasValue && filters.Departments.Contains(e.DepartmentId.Value));
-        }
-
-        if (filters.Status != null && filters.Status.Count != 0)
-        {
-            filterConditions.Add(e => filters.Status.Contains(e.Status));
-        }
-
-        return employees.Where(e => filterConditions.All(condition => condition(e))).ToList();
-    }
-
-    private static List<EmployeeDetails> ApplySearch(List<EmployeeDetails> employees, string searchKeyword)
-    {
-        if (string.IsNullOrWhiteSpace(searchKeyword))
-        {
-            return employees;
-        }
-
-        string keyword = searchKeyword.ToLower();
-        return employees.Where(e =>
-        e.UID?.Equals(keyword, StringComparison.CurrentCultureIgnoreCase) == true ||
-        e.FirstName?.Contains(keyword, StringComparison.CurrentCultureIgnoreCase) == true ||
-        e.LastName?.Contains(keyword, StringComparison.CurrentCultureIgnoreCase) == true
-        ).ToList();
-
-    }
-
-    private string? GetDropdownName(int? Id, string tableName)
-    {
-        string query;
-        object? result = null;
-
-        using (SqlConnection connection = new SqlConnection(_connectionString))
+        using SqlConnection connection = new SqlConnection(_connectionString);
+        try
         {
             connection.Open();
 
-            if (tableName == "Manager")
-            {
-                query = @"
-        SELECT CONCAT(m.FirstName, ' ', m.LastName) AS Name 
-        FROM Employee e
-        LEFT JOIN Employee m ON e.ManagerId = m.ID
-        WHERE e.ID = @ID";
-            }
-            else
-            {
-                query = $"SELECT Name FROM {tableName} WHERE ID = @ID";
-            }
-
-            using SqlCommand command = new(query, connection);
-
-            command.Parameters.AddWithValue("@ID", Id.HasValue ? Id.Value : DBNull.Value);
-
-            using SqlDataReader reader = command.ExecuteReader();
-            if (reader.Read())
-            {
-                result = reader["Name"];
-            }
+            using SqlCommand command = new SqlCommand(query, connection);
+            count = (int)command.ExecuteScalar();
         }
-
-        return result as string;
-    }
-
-    private List<EmployeeDetails> ConvertDataReaderToEmployeeDetailsList(SqlDataReader reader)
-    {
-        List<EmployeeDetails> employees = [];
-        while (reader.Read())
+        catch (Exception ex)
         {
-            EmployeeDetails employee = new()
-            {
-                Id = (int)reader["ID"],
-                UID = reader["UID"].ToString(),
-                Status = Convert.ToInt32(reader["Status"]),
-                FirstName = reader["FirstName"].ToString(),
-                LastName = reader["LastName"].ToString(),
-                Dob = reader["Dob"] as DateTime?,
-                Email = reader["Email"].ToString(),
-                MobileNumber = reader["MobileNumber"].ToString(),
-                JoiningDate = reader["JoiningDate"] as DateTime?,
-                LocationId = reader["LocationId"] as int?,
-                RoleId = reader["RoleId"] as int?,
-                DepartmentId = reader["DepartmentId"] as int?,
-                ManagerId = reader["ManagerId"] as int?,
-                ProjectId = reader["ProjectId"] as int?
-            };
-
-            employee.LocationName = GetDropdownName(employee.LocationId, "Location");
-            employee.RoleName = GetDropdownName(employee.RoleId, "Role");
-            employee.DepartmentName = GetDropdownName(employee.DepartmentId, "Department");
-            employee.ManagerName = GetDropdownName(employee.Id, "Manager");
-            employee.ProjectName = GetDropdownName(employee.ProjectId, "Project");
-
-            employees.Add(employee);
+            _logger.LogError($"Error counting employees: {ex.Message}");
+            throw;
         }
-        return employees;
-    }
+        finally
+        {
+            connection.Close();
+        }
 
+        return count;
+    }
 }

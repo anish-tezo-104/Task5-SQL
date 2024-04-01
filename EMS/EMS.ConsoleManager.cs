@@ -17,7 +17,6 @@ public partial class EMS
         EmployeeDetails employee = new();
         string? empNo = ValidateEmployeeNo("Employee Number", required);
         employee.UID = string.IsNullOrWhiteSpace(empNo) ? null : empNo;
-        employee.Status = 1;
         string? firstName = GetDataFromField("First Name", required);
         employee.FirstName = string.IsNullOrWhiteSpace(firstName) ? null : firstName;
         string? lastName = GetDataFromField("Last Name", required);
@@ -100,7 +99,7 @@ public partial class EMS
 
             if (!int.TryParse(userInput, out int parsedRoleId) || !validRoles.ContainsKey(parsedRoleId))
             {
-                PrintError($"Invalid role. Please select from the roles listed for the specified department.");
+                PrintError($"Invalid role. Please select Id from the roles listed for the specified department.");
                 roleId = null;
             }
             else
@@ -364,17 +363,17 @@ public partial class EMS
             string? ManagerName = employee.ManagerName ?? null;
             string? ProjectName = employee.ProjectName ?? null;
 
-            Console.WriteLine($" {employee.Id}\t{employee.UID}\t\t|{fullName,-20}\t|{Status,-10}\t|{dob}\t|{email,-30}\t|{mobileNumber}\t|{locationName,-10}\t\t|{jobTitle,-30}\t|{departmentName}");
+            PrintConsoleMessage($" {employee.Id}\t{employee.UID}\t\t|{fullName,-20}\t|{Status,-10}\t|{dob}\t|{email,-30}\t|{mobileNumber}\t|{locationName,-10}\t\t|{jobTitle,-30}\t|{departmentName}");
         }
-        Console.WriteLine("-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\n");
+        PrintConsoleMessage("-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\n");
     }
 
     private static void PrintEmployeesTableHeader()
     {
-        Console.WriteLine("\nEmployee Details:\n");
-        Console.WriteLine("-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------");
-        Console.WriteLine(" ID\t|UID\t\t|Name\t\t\t|Status\t\t|Date of Birth\t|Email\t\t\t\t|Mobile Number\t|Location\t\t|Job Title\t\t\t|Department");
-        Console.WriteLine("-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------");
+        PrintConsoleMessage("\nEmployee Details:\n");
+        PrintConsoleMessage("-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------");
+        PrintConsoleMessage(" ID\t|UID\t\t|Name\t\t\t|Status\t\t|Date of Birth\t|Email\t\t\t\t|Mobile Number\t|Location\t\t|Job Title\t\t\t|Department");
+        PrintConsoleMessage("-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------");
     }
 
     // Roles related partial functions
@@ -393,10 +392,10 @@ public partial class EMS
 
     private static void PrintRolesTableHeader()
     {
-        Console.WriteLine("\nRoles Details:\n");
-        Console.WriteLine("------------------------------------------------------------------------------------");
-        Console.WriteLine(" Role ID\t|Role Name\t\t\t|Department Name");
-        Console.WriteLine("------------------------------------------------------------------------------------");
+        PrintConsoleMessage("\nRoles Details:\n");
+        PrintConsoleMessage("------------------------------------------------------------------------------------");
+        PrintConsoleMessage(" Role ID\t|Role Name\t\t\t|Department Name");
+        PrintConsoleMessage("------------------------------------------------------------------------------------");
     }
 
     private static partial void PrintRoles(List<Role> roles)
@@ -412,9 +411,9 @@ public partial class EMS
                 string roleName = role.Name;
                 int departmentId = role.DepartmentId ?? 0;
                 string? departmentName = departmentNames.TryGetValue(departmentId, out string? value) ? value : null;
-                Console.WriteLine($" {id}\t\t|{roleName,-30}\t|{departmentName}");
+                PrintConsoleMessage($" {id}\t\t|{roleName,-30}\t|{departmentName}");
             }
-            Console.WriteLine("--------------------------------------------------------------------------------------\n");
+            PrintConsoleMessage("--------------------------------------------------------------------------------------\n");
         }
         else
         {

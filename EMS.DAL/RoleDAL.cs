@@ -1,4 +1,3 @@
-using Microsoft.Extensions.Configuration;
 using EMS.Common.Logging;
 using EMS.DAL.Interfaces;
 using EMS.DAL.DBO;
@@ -10,64 +9,76 @@ public class RoleDAL : IRoleDAL
 {
     private readonly string? _connectionString = "";
     private readonly ILogger _logger;
-    private readonly IConfiguration _configuration;
 
-    public RoleDAL(ILogger logger, IConfiguration configuration)
+    public RoleDAL(ILogger logger, string connectionString)
     {
         _logger = logger;
-        _configuration = configuration;
-        _connectionString = _configuration["ConnectionString"];
+        _connectionString = connectionString;
     }
 
-    public bool Insert(Role role)
+    public int Insert(Role role)
     {
         using SqlConnection connection = new SqlConnection(_connectionString);
-        connection.Open();
-
-        string query = @"INSERT INTO Role (Name, DepartmentId)
-                         VALUES (@Name, @DepartmentId)";
-
-        using SqlCommand command = new SqlCommand(query, connection);
-
-
-        command.Parameters.AddWithValue("@Name", role.Name);
-        command.Parameters.AddWithValue("@DepartmentId", role.DepartmentId);
-
-        int rowsAffected = command.ExecuteNonQuery();
-        if (rowsAffected > 0)
+        try
         {
-            return true;
+            connection.Open();
+
+            string query = @"INSERT INTO Role (Name, DepartmentId)
+                         VALUES (@Name, @DepartmentId);
+                         SELECT SCOPE_IDENTITY();";
+
+            using SqlCommand command = new SqlCommand(query, connection);
+
+            command.Parameters.AddWithValue("@Name", role.Name);
+            command.Parameters.AddWithValue("@DepartmentId", role.DepartmentId);
+
+            int insertedId = Convert.ToInt32(command.ExecuteScalar());
+            return insertedId;
         }
-        else
+        catch (Exception ex)
         {
-            _logger.LogWarning("No rows were affected during insert operation.");
-            return false;
+            _logger.LogError($"Error occurred while adding new role: {ex.Message}");
+            throw;
+        }
+        finally
+        {
+            connection.Close();
         }
     }
 
     public List<Role>? RetrieveAll()
     {
-        using SqlConnection connection = new(_connectionString);
-        connection.Open();
-        string query = "SELECT * FROM Role";
-        using SqlCommand command = new(query, connection);
-        using SqlDataReader reader = command.ExecuteReader();
         List<Role> roles = [];
-        while (reader.Read())
+
+        using SqlConnection connection = new SqlConnection(_connectionString);
+
+        try
         {
-            Role role = new()
+            connection.Open();
+            string query = "SELECT * FROM Role";
+            using SqlCommand command = new(query, connection);
+            using SqlDataReader reader = command.ExecuteReader();
+            while (reader.Read())
             {
-                Id = reader.GetInt32(0),
-                Name = reader.GetString(1),
-                DepartmentId = reader.GetInt32(2)
-            };
-            roles.Add(role);
+                Role role = new Role
+                {
+                    Id = reader.GetInt32(0),
+                    Name = reader.GetString(1),
+                    DepartmentId = reader.GetInt32(2)
+                };
+                roles.Add(role);
+            }
         }
-        if (roles == null || roles.Count == 0)
+        catch (Exception ex)
         {
-            return [];
+            _logger.LogError($"Error occurred while retrieving all roles: {ex.Message}");
+            throw;
         }
-        connection.Close();
+        finally
+        {
+            connection.Close();
+        }
         return roles;
     }
+
 }
