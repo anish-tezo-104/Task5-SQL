@@ -363,7 +363,7 @@ public partial class EMS
             string? ManagerName = employee.ManagerName ?? null;
             string? ProjectName = employee.ProjectName ?? null;
 
-            PrintConsoleMessage($" {employee.Id}\t{employee.UID}\t\t|{fullName,-20}\t|{Status,-10}\t|{dob}\t|{email,-30}\t|{mobileNumber}\t|{locationName,-10}\t\t|{jobTitle,-30}\t|{departmentName}");
+            PrintConsoleMessage($" {employee.Id}\t|{employee.UID}\t\t|{fullName,-20}\t|{Status,-10}\t|{dob}\t|{email,-30}\t|{mobileNumber}\t|{locationName,-10}\t\t|{jobTitle,-30}\t|{departmentName}");
         }
         PrintConsoleMessage("-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\n");
     }

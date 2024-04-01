@@ -66,24 +66,11 @@ public class EmployeeDAL : BaseDAL, IEmployeeDAL
                 connection.Open();
                 string query = @"
                 SELECT 
-                    Employee.Id, 
-                    Employee.UID, 
-                    Employee.Status, 
-                    Employee.FirstName, 
-                    Employee.LastName, 
-                    Employee.Dob, 
-                    Employee.Email, 
-                    Employee.MobileNumber, 
-                    Employee.JoiningDate, 
-                    Employee.LocationId,
+                    Employee.*, 
                     Location.Name as LocationName, 
-                    Employee.RoleId, 
                     Role.Name as RoleName, 
-                    Employee.DepartmentId, 
                     Department.Name as DepartmentName, 
-                    Employee.ProjectId, 
                     Project.Name as ProjectName, 
-                    Employee.ManagerId, 
                     Manager.Name AS ManagerName
                 FROM 
                     Employee
@@ -234,24 +221,11 @@ public class EmployeeDAL : BaseDAL, IEmployeeDAL
     {
         string query = @"
             SELECT 
-                Employee.Id, 
-                Employee.UID, 
-                Employee.Status, 
-                Employee.FirstName, 
-                Employee.LastName, 
-                Employee.Dob, 
-                Employee.Email, 
-                Employee.MobileNumber, 
-                Employee.JoiningDate, 
-                Employee.LocationId,
+                Employee.*, 
                 Location.Name as LocationName, 
-                Employee.RoleId, 
                 Role.Name as RoleName, 
-                Employee.DepartmentId, 
                 Department.Name as DepartmentName, 
-                Employee.ProjectId, 
                 Project.Name as ProjectName, 
-                Employee.ManagerId, 
                 Manager.Name AS ManagerName
             FROM 
                 Employee
