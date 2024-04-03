@@ -23,6 +23,7 @@ To run the application, ensure you have the .NET SDK installed on your machine. 
 - `--search-emp` : Search for details of a specific employee.
 - `--filter-emp` : Filter the list of employees based on specific criteria.
 - `--count-emp` : Get the count of employees in the system.
+
 - `--add-role` : Add a new role to the system.
 - `--show-role` : Display the list of roles.
 
